@@ -70,6 +70,8 @@ class AlgoStrategy(gamelib.AlgoCore):
     def strategy(self, game_state):
         # Place basic defences
         self.build_basic_defences(game_state)
+        # Left defences
+        self.left_additional_defence(game_state)
         # Place basic units
         self.offence(game_state)
         # Place advnaced units
@@ -84,10 +86,13 @@ class AlgoStrategy(gamelib.AlgoCore):
         # After the first turn check for the main wall placements and main cannon placements
         if game_state.turn_number >= 1:
 
+            if game_state.turn_number == 1:
+                game_state.attempt_spawn(FILTER, [0, 13])
+
             main_destructor = [[27, 13], [24, 12], [22, 11]]
             game_state.attempt_spawn(DESTRUCTOR, main_destructor)
 
-            left_main_filter = [[0, 13], [1, 12], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7], [7, 6], [8, 5], [9, 4], [10, 3]]
+            left_main_filter = [[1, 12], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7], [7, 6], [8, 5], [9, 4], [10, 3]]
             middle_main_filter = [[11, 2], [12, 2]]
             right_main_filter = [[13, 3], [14, 4], [15, 5], [16, 6], [17, 7], [18, 8],  [19, 9], [20, 10], [21, 11], [22, 12], [23, 12], [26, 13]]
             game_state.attempt_spawn(FILTER, right_main_filter)
@@ -101,7 +106,9 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         num_layer_two_destructors = 0
         layer_two_destructors_points = [[21, 12], [20, 11]]
-        layer_two_filters_points = [[18, 12], [19, 12], [20, 12], [18, 11]]
+        layer_two_filters_points = [[18, 12], [19, 12], [20, 12], [18, 11]] 
+
+        layer_three_destructors_points = [[24, 13], [23, 13], [22, 13], [21, 13], [20, 13]]
 
         if game_state.turn_number >= 1:
 
@@ -122,6 +129,39 @@ class AlgoStrategy(gamelib.AlgoCore):
             for layer_two_filter in layer_two_filters_points:
                 if num_layer_two_destructors == 2:
                     game_state.attempt_spawn(FILTER, layer_two_filter)
+            
+            # Layer 3
+            for layer_three_destructor in layer_three_destructors_points:
+                if game_state.can_spawn(DESTRUCTOR, layer_three_destructor):
+                    game_state.attempt_spawn(DESTRUCTOR, layer_three_destructor)
+                    spawned_destructor = True
+
+    def left_additional_defence(self, game_state):
+        spawned_destructor = False
+
+        num_layer_one_destructors = 0
+        layer_one_destructors_points = [[0, 13], [2, 12], [3, 12], [4, 12], [5, 11]]
+        layer_one_filters_points = [[1, 13], [2, 13], [3, 13], [4, 13], [5, 12]] 
+
+        avg_loc = 0
+
+        for location in self.scored_on_locations:
+            avg_loc += location[0]
+        
+        avg_loc = avg_loc // (len(self.scored_on_locations) + 1)
+
+        if game_state.turn_number >= 1 and avg_loc <= 13 and len(self.scored_on_locations) != 0:
+
+            for layer_one_destructor in layer_one_destructors_points:
+                if not game_state.can_spawn(DESTRUCTOR, layer_one_destructor) and game_state.get_resource(CORES) >= 6:
+                    num_layer_one_destructors += 1
+                if game_state.can_spawn(DESTRUCTOR, layer_one_destructor):
+                    game_state.attempt_spawn(DESTRUCTOR, layer_one_destructor)
+                    spawned_destructor = True
+    
+            for layer_one_filter in layer_one_filters_points:
+                if num_layer_one_destructors > 1:
+                    game_state.attempt_spawn(FILTER, layer_one_filter)
 
     def add_encryptor(self, game_state):
         if game_state.turn_number >= 1:
