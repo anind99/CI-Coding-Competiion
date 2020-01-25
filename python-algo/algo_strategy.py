@@ -73,9 +73,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Place basic units
         self.offence(game_state)
         # Place advnaced units
-        self.simple_additional_defence(game_state)
+        self.right_additional_defence(game_state)
         # Place additional encryptors
-        self.add_encryptor(game_state)
+        #self.add_encryptor(game_state)
 
     def build_basic_defences(self, game_state):
         # Build the main encryptor
@@ -84,20 +84,68 @@ class AlgoStrategy(gamelib.AlgoCore):
         # After the first turn check for the main wall placements and main cannon placements
         if game_state.turn_number >= 1:
 
-            main_destructor = [[27, 13], [24, 12], [22, 11]]
+            main_destructor = [[27, 13], [23, 12], [26, 12]]
             game_state.attempt_spawn(DESTRUCTOR, main_destructor)
 
-            main_filters = [[0, 13], [26, 13], [1, 12], [22, 12], [23, 12], [2, 11], [21, 11], [3, 10], [20, 10], [4, 9], [19, 9], [5, 8], [18, 8], [6, 7], [17, 7], [7, 6], [16, 6], [8, 5], [15, 5], [9, 4], [14, 4], [10, 3], [13, 3], [11, 2], [12, 2]]
-            game_state.attempt_spawn(FILTER, main_filters)
+            left_main_filter = [[0, 13], [1, 12], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7], [7, 6], [8, 5], [9, 4], [10, 3]]
+            middle_main_filter = [[11, 2], [12, 2]]
+            right_main_filter = [[13, 3], [14, 4], [15, 5], [16, 6], [17, 7], [18, 8],  [19, 9], [20, 10]]
+            game_state.attempt_spawn(FILTER, right_main_filter)
+            game_state.attempt_spawn(FILTER, middle_main_filter)
+            game_state.attempt_spawn(FILTER, left_main_filter)
 
-    def simple_additional_defence(self, game_state):
+    def right_additional_defence(self, game_state):
+        spawned_destructor = False
+
+        num_layer_one_destructors = 0
+        layer_one_destructors_points = [[21, 11], [22, 11]]
+        layer_one_filters_points = [[21, 12], [22, 12], [20, 11]]
+
+        num_layer_two_destructors = 0
+        layer_two_destructors_points = [[20, 12]]
+        layer_two_filters_points = [[19, 12]]
+
+        num_layer_three_destructors = 0
+        layer_three_destructors_points = [[18, 11], [19, 11]]
+        layer_three_filters_points = [[17, 12], [18, 12], [17, 11]]
+
         if game_state.turn_number >= 1:
-            additional_destructors = [[21, 12], [26, 12], [19, 11], [20, 11], [23, 11], [19, 10]]
-            for spot in additional_destructors:
-                game_state.attempt_spawn(DESTRUCTOR, spot)
-            additional_filter = [[17, 12], [18, 12], [19, 12], [20, 12], [17, 11], [18, 11], [18, 10]]
-            for spot in additional_filter:
-                game_state.attempt_spawn(FILTER, spot)
+
+            # Layer 1
+            for layer_one_destructor in layer_one_destructors_points:
+                if not game_state.can_spawn(DESTRUCTOR, layer_one_destructor) and game_state.get_resource(CORES) >= 6:
+                    num_layer_one_destructors += 1
+                if game_state.can_spawn(DESTRUCTOR, layer_one_destructor):
+                    game_state.attempt_spawn(DESTRUCTOR, layer_one_destructor)
+                    spawned_destructor = True
+    
+            for layer_one_filter in layer_one_filters_points:
+                if num_layer_one_destructors == 2:
+                    game_state.attempt_spawn(FILTER, layer_one_filter)
+
+            # Layer 2
+            for layer_two_destructor in layer_two_destructors_points:
+                if not game_state.can_spawn(DESTRUCTOR, layer_two_destructor) and game_state.get_resource(CORES) >= 6:
+                    num_layer_two_destructors += 1
+                if game_state.can_spawn(DESTRUCTOR, layer_two_destructor):
+                    game_state.attempt_spawn(DESTRUCTOR, layer_two_destructor)
+                    spawned_destructor = True
+    
+            for layer_two_filter in layer_two_filters_points:
+                if num_layer_two_destructors == 1:
+                    game_state.attempt_spawn(FILTER, layer_two_filter)
+            
+            # Layer 3
+            for layer_three_destructor in layer_three_destructors_points:
+                if not game_state.can_spawn(DESTRUCTOR, layer_three_destructor) and game_state.get_resource(CORES) >= 6:
+                    num_layer_three_destructors += 1
+                if game_state.can_spawn(DESTRUCTOR, layer_three_destructor):
+                    game_state.attempt_spawn(DESTRUCTOR, layer_three_destructor)
+                    spawned_destructor = True
+    
+            for layer_three_filter in layer_three_filters_points:
+                if num_layer_three_destructors == 3:
+                    game_state.attempt_spawn(FILTER, layer_three_filter)
 
     def add_encryptor(self, game_state):
         if game_state.turn_number >= 1:
@@ -113,14 +161,14 @@ class AlgoStrategy(gamelib.AlgoCore):
         # check number of bits, save for 4 emp then spam pings repeat
         if not self.sent_emp:
             # wait till num bits > 12
-            if game_state.get_resource(BITS) >= 21:
+            if game_state.get_resource(BITS) >= 18:
                 while game_state.can_spawn(EMP, attack_pos[0]):
-                    game_state.attempt_spawn(EMP, attack_pos[0])
+                    game_state.attempt_spawn(EMP, attack_pos)
                 self.sent_emp = True
         else:
-            if self.sent_emp and game_state.get_resource(BITS) >= 16:
+            if self.sent_emp and game_state.get_resource(BITS) >= 12:
                 while game_state.can_spawn(PING, attack_pos[0], 1):
-                    game_state.attempt_spawn(PING, attack_pos[0])
+                    game_state.attempt_spawn(PING, attack_pos)
                 self.sent_emp = False
 
     def build_reactive_defense(self, game_state):
@@ -133,29 +181,6 @@ class AlgoStrategy(gamelib.AlgoCore):
             # Build destructor one space above so that it doesn't block our own edge spawn locations
             build_location = [location[0], location[1]+1]
             game_state.attempt_spawn(DESTRUCTOR, build_location)
-
-    def stall_with_scramblers(self, game_state):
-        """
-        Send out Scramblers at random locations to defend our base from enemy moving units.
-        """
-        # We can spawn moving units on our edges so a list of all our edge locations
-        friendly_edges = game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_LEFT) + game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_RIGHT)
-        
-        # Remove locations that are blocked by our own firewalls 
-        # since we can't deploy units there.
-        deploy_locations = self.filter_blocked_locations(friendly_edges, game_state)
-        
-        # While we have remaining bits to spend lets send out scramblers randomly.
-        while game_state.get_resource(BITS) >= game_state.type_cost(SCRAMBLER)[BITS] and len(deploy_locations) > 0:
-            # Choose a random deploy location.
-            deploy_index = random.randint(0, len(deploy_locations) - 1)
-            deploy_location = deploy_locations[deploy_index]
-            
-            game_state.attempt_spawn(SCRAMBLER, deploy_location)
-            """
-            We don't have to remove the location since multiple information 
-            units can occupy the same space.
-            """
 
     def emp_line_strategy(self, game_state):
         """
