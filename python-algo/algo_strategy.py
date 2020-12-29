@@ -1,4 +1,4 @@
-import gamelib
++import gamelib
 import random
 import math
 import warnings
@@ -27,8 +27,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         gamelib.debug_write('Random seed: {}'.format(seed))
 
     def on_game_start(self, config):
-        """ 
-        Read in config and perform any initial setup here 
+        """
+        Read in config and perform any initial setup here
         """
         gamelib.debug_write('Configuring your custom algo strategy...')
         self.config = config
@@ -44,6 +44,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         # This is a good place to do initial setup
         self.scored_on_locations = []
         self.sent_emp = False
+        self.enemy_health = 0
+        self.emp_bits = 18
 
     def on_turn(self, turn_state):
         """
@@ -68,6 +70,7 @@ class AlgoStrategy(gamelib.AlgoCore):
     """
 
     def strategy(self, game_state):
+
         # Place basic defences
         self.build_basic_defences(game_state)
         # Left defences
@@ -78,6 +81,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.right_additional_defence(game_state)
         # Place additional encryptors
         #self.add_encryptor(game_state)
+        self.enemy_health = game_state.get_enemy_stats
 
     def build_basic_defences(self, game_state):
         # Build the main encryptor
@@ -106,7 +110,7 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         num_layer_two_destructors = 0
         layer_two_destructors_points = [[21, 12], [20, 11]]
-        layer_two_filters_points = [[18, 12], [19, 12], [20, 12], [18, 11]] 
+        layer_two_filters_points = [[18, 12], [19, 12], [20, 12], [18, 11]]
 
         layer_three_destructors_points = [[24, 13], [23, 13], [22, 13], [21, 13], [20, 13]]
 
@@ -125,11 +129,11 @@ class AlgoStrategy(gamelib.AlgoCore):
                 if game_state.can_spawn(DESTRUCTOR, layer_two_destructor):
                     game_state.attempt_spawn(DESTRUCTOR, layer_two_destructor)
                     spawned_destructor = True
-    
+
             for layer_two_filter in layer_two_filters_points:
                 if num_layer_two_destructors == 2:
                     game_state.attempt_spawn(FILTER, layer_two_filter)
-            
+
             # Layer 3
             for layer_three_destructor in layer_three_destructors_points:
                 if game_state.can_spawn(DESTRUCTOR, layer_three_destructor):
@@ -141,13 +145,13 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         num_layer_one_destructors = 0
         layer_one_destructors_points = [[0, 13], [2, 12], [3, 12], [4, 12], [5, 11]]
-        layer_one_filters_points = [[1, 13], [2, 13], [3, 13], [4, 13], [5, 12]] 
+        layer_one_filters_points = [[1, 13], [2, 13], [3, 13], [4, 13], [5, 12]]
 
         avg_loc = 0
 
         for location in self.scored_on_locations:
             avg_loc += location[0]
-        
+
         avg_loc = avg_loc // (len(self.scored_on_locations) + 1)
 
         if game_state.turn_number >= 1 and avg_loc <= 13 and len(self.scored_on_locations) != 0:
@@ -158,7 +162,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 if game_state.can_spawn(DESTRUCTOR, layer_one_destructor):
                     game_state.attempt_spawn(DESTRUCTOR, layer_one_destructor)
                     spawned_destructor = True
-    
+
             for layer_one_filter in layer_one_filters_points:
                 if num_layer_one_destructors > 1:
                     game_state.attempt_spawn(FILTER, layer_one_filter)
@@ -168,9 +172,19 @@ class AlgoStrategy(gamelib.AlgoCore):
             additional_encryptors = [[19, 6], [20, 6], [18, 5], [19, 5], [17, 4], [18, 4], [16, 3], [17, 3], [15, 2], [16, 2], [15, 1]]
             for spot in additional_encryptors:
                 game_state.attempt_spawn(ENCRYPTOR, spot)
-    
+
     def offence(self, game_state):
-        attack_pos = [[13,0]]
+        attack_pos = [[13, 0]]
+        if (self.enemy_health == 0):
+            self.enemy_health = game_state.get_enemy_stats
+
+        if (self.hit(game_state)):
+            while game_state.can_spawn(PING, attack_pos[0]):
+                game_state.attempt_spawn(PING, attack_pos)
+            self.emp_bits = 18
+        else:
+            self.emp_bits += 3
+
         if game_state.turn_number == 0:
             while game_state.can_spawn(PING, attack_pos[0], 1):
                 game_state.attempt_spawn(PING, attack_pos)
@@ -187,10 +201,13 @@ class AlgoStrategy(gamelib.AlgoCore):
                     game_state.attempt_spawn(PING, attack_pos)
                 self.sent_emp = False
 
+    def hit(self, game_state):
+        return self.enemy_health - game_state.get_enemy_stats > 0
+
     def build_reactive_defense(self, game_state):
         """
         This function builds reactive defenses based on where the enemy scored on us from.
-        We can track where the opponent scored by looking at events in action frames 
+        We can track where the opponent scored by looking at events in action frames
         as shown in the on_action_frame function
         """
         for location in self.scored_on_locations:
@@ -223,7 +240,7 @@ class AlgoStrategy(gamelib.AlgoCore):
     def least_damage_spawn_location(self, game_state, location_options):
         """
         This function will help us guess which location is the safest to spawn moving units from.
-        It gets the path the unit will take then checks locations on that path to 
+        It gets the path the unit will take then checks locations on that path to
         estimate the path's damage risk.
         """
         damages = []
@@ -235,7 +252,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 # Get number of enemy destructors that can attack the final location and multiply by destructor damage
                 damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(DESTRUCTOR, game_state.config).damage_i
             damages.append(damage)
-        
+
         # Now just return the location that takes the least damage
         return location_options[damages.index(min(damages))]
 
@@ -247,7 +264,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                     if unit.player_index == 1 and (unit_type is None or unit.unit_type == unit_type) and (valid_x is None or location[0] in valid_x) and (valid_y is None or location[1] in valid_y):
                         total_units += 1
         return total_units
-        
+
     def filter_blocked_locations(self, locations, game_state):
         filtered = []
         for location in locations:
@@ -257,7 +274,7 @@ class AlgoStrategy(gamelib.AlgoCore):
 
     def on_action_frame(self, turn_string):
         """
-        This is the action frame of the game. This function could be called 
+        This is the action frame of the game. This function could be called
         hundreds of times per turn and could slow the algo down so avoid putting slow code here.
         Processing the action frames is complicated so we only suggest it if you have time and experience.
         Full doc on format of a game frame at: https://docs.c1games.com/json-docs.html
@@ -269,7 +286,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         for breach in breaches:
             location = breach[0]
             unit_owner_self = True if breach[4] == 1 else False
-            # When parsing the frame data directly, 
+            # When parsing the frame data directly,
             # 1 is integer for yourself, 2 is opponent (StarterKit code uses 0, 1 as player_index instead)
             if not unit_owner_self:
                 gamelib.debug_write("Got scored on at: {}".format(location))

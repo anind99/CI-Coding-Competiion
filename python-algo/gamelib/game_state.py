@@ -11,8 +11,8 @@ def is_stationary(unit_type):
     """
         Args:
             unit_type: A unit type
-        
-        Returns: 
+
+        Returns:
             Boolean, True if the unit is stationary, False otherwise.
     """
     return unit_type in FIREWALL_TYPES
@@ -35,7 +35,7 @@ class GameState:
         * HALF_ARENA (int): Half the size of the arena
         * BITS (int): A constant representing the bits resource, used in the get_resource function
         * CORES (int): A constant representing the cores resource, used in the get_resource function
-         
+
         * game_map (:obj: GameMap): The current GameMap. To retrieve a list of GameUnits at a location, use game_map[x, y]
         * turn_number (int): The current turn number. Starts at 0.
         * my_health (int): Your current remaining health
@@ -124,6 +124,9 @@ class GameState:
         self.__create_parsed_units(p1units, 0)
         self.__create_parsed_units(p2units, 1)
 
+    def get_enemy_stats(self):
+        return self.enemy_health
+
     def __create_parsed_units(self, units, player_number):
         """
         Helper function for __parse_state to add units to the map.
@@ -153,7 +156,7 @@ class GameState:
     def __set_resource(self, resource_type, amount, player_index=0):
         """
         Sets the resources for the given player_index and resource_type.
-        Is automatically called by other provided functions. 
+        Is automatically called by other provided functions.
         """
         if resource_type == self.BITS:
             resource_key = 'bits'
@@ -164,7 +167,7 @@ class GameState:
 
     def _invalid_player_index(self, index):
         self.warn("Invalid player index {} passed, player index should always be 0 (yourself) or 1 (your opponent)".format(index))
-    
+
     def _invalid_unit(self, unit):
         self.warn("Invalid unit {}".format(unit))
 
@@ -290,7 +293,7 @@ class GameState:
         if unit_type == REMOVE:
             self._invalid_unit(unit_type)
             return
-        
+
         unit_def = self.config["unitInformation"][UNIT_TYPE_TO_INDEX[unit_type]]
         cost_base = [unit_def.get('cost1', 0), unit_def.get('cost2', 0)]
         if upgrade:
@@ -300,10 +303,10 @@ class GameState:
 
 
     def can_spawn(self, unit_type, location, num=1):
-        """Check if we can spawn a unit at a location. 
+        """Check if we can spawn a unit at a location.
 
         To units, we need to be able to afford them, and the location must be
-        in bounds, unblocked, on our side of the map, not on top of a unit we can't stack with, 
+        in bounds, unblocked, on our side of the map, not on top of a unit we can't stack with,
         and on an edge if the unit is information.
 
         Args:
@@ -318,7 +321,7 @@ class GameState:
         if unit_type not in ALL_UNITS:
             self._invalid_unit(unit_type)
             return
-        
+
         if not self.game_map.in_arena_bounds(location):
             if self.enable_warnings:
                 self.warn("Could not spawn {} at location {}. Location invalid.".format(unit_type, location))
@@ -365,7 +368,7 @@ class GameState:
         if num < 1:
             self.warn("Attempted to spawn fewer than one units! ({})".format(num))
             return
-      
+
         if type(locations[0]) == int:
             locations = [locations]
         spawned_units = 0
@@ -449,7 +452,7 @@ class GameState:
         Args:
             start_location: The location of a hypothetical unit
 
-        Returns: 
+        Returns:
             The edge this unit would attempt to reach if it was spawned at this location
         """
 
@@ -474,7 +477,7 @@ class GameState:
             target_edge: The edge the unit wants to reach. game_map.TOP_LEFT, game_map.BOTTOM_RIGHT, etc. Induced from start_location if None.
 
         Returns:
-            A list of locations corresponding to the path the unit would take 
+            A list of locations corresponding to the path the unit would take
             to get from it's starting location to the best available end location
 
         """
@@ -496,7 +499,7 @@ class GameState:
 
         Returns:
             True if there is a stationary unit at the location, False otherwise
-            
+
         """
         if not self.game_map.in_arena_bounds(location):
             self.warn('Checked for stationary unit outside of arena bounds')
@@ -517,16 +520,16 @@ class GameState:
     def suppress_warnings(self, suppress):
         """Suppress all warnings
 
-        Args: 
+        Args:
             suppress: If true, disable warnings. If false, enable warnings.
-            
+
         """
 
         self.enable_warnings = not suppress
         self.game_map.enable_warnings = not suppress
 
     def get_target(self, attacking_unit):
-        """Returns target of given unit based on current map of the game board. 
+        """Returns target of given unit based on current map of the game board.
         A Unit can often have many other units in range, and Units that attack do so once each frame.
 
         Their targeting priority is as follows:
@@ -569,7 +572,7 @@ class GameState:
                     new_target = True
                 elif not target_stationary and unit_stationary:
                     continue
-                
+
                 if target_distance > unit_distance:
                     new_target = True
                 elif target_distance < unit_distance and not new_target:
@@ -594,7 +597,7 @@ class GameState:
 
                 if target_x_distance < unit_x_distance:
                     new_target = True
-                
+
                 if new_target:
                     target = unit
                     target_stationary = unit_stationary
